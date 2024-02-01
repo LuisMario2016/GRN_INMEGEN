@@ -1,14 +1,16 @@
 install.packages("renv")
 library(renv)
-setwd("C:\\Users\\luis_\\OneDrive\\Documentos\\INMEGEN")
+setwd("/Users/biomario/Documents/INMEGEN")
 renv::init()
 
 renv::install("devtools")
 library(devtools)
 
 ## instalando Summariized 
-devtools::install_github("Bioconductor/SummarizedExperiment", ref = "RELEASE_3_14")
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
 
+BiocManager::install("SummarizedExperiment", force = T)
 ## instalando TCGA
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
@@ -72,20 +74,16 @@ table(samples$subtype)
 
 write.table(samples,"subtype.tsv",sep='\t',quote=F,row.names=F)
 
-#####################################################################
-x<-head(subtype$samples,2)
-xprssn <- GDCquery(project = "TCGA-STAD",
-                   data.category = "Transcriptome Profiling",
-                   data.type = "Gene Expression Quantification",
-                   workflow.type="STAR - Counts", barcode = x)
+###############ADD CLINICAL INFO##########################
+clin <- GDCquery_clinic("TCGA-STAD","clinical")
+ 
+clin <- clin[,c("bcr_patient_barcode","gender",
+                "ajcc_pathologic_stage","race","vital_status")]
+subtype=cbind(subtype,t(sapply(subtype$patient,function(x) 
+  clin[clin$bcr_patient_barcode==x,2:4])))
+table(clin$gender) 
+table(clin$ajcc_pathologic)
+table(clin$race)
+samples_ <- as.matrix(subtype)
+write.table(samples_,"subtype.tsv",sep='\t',quote=F,row.names=F)
 
-GDCdownload(xprssn)
-expre=GDCprepare(xprssn,summarizedExperiment=F)
-
-
-mthyltn <-  GDCquery(project = "TCGA-STAD",
-                     data.category = "DNA Methylation",
-                     platform="Illumina Human Methylation 450",
-                     data.type = "Methylation Beta Value",
-                     barcode=subtype$samples)
-GDCdownload(mthyltn)
